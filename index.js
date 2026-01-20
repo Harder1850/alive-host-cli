@@ -1,5 +1,6 @@
 import hostConfig from "./host.config.js";
 import readline from "node:readline";
+import { startBody } from "../alive-body/index.js";
 
 const mode = hostConfig?.mode ?? "demo";
 console.log(`[host] alive-host-cli starting (${mode} mode)`);
@@ -10,15 +11,24 @@ const rl = readline.createInterface({
   terminal: false
 });
 
-rl.once("line", (line) => {
+rl.once("line", async (input) => {
   const observation = {
-    observedAt: new Date().toISOString(),
-    input: line
+    type: "host.stdin",
+    payload: input,
+    timestamp: new Date().toISOString()
   };
 
-  process.stdout.write(`${JSON.stringify(observation)}\n`);
-  console.log("[host] demo complete — exiting cleanly");
-  rl.close();
+  // Host treats the Body as a black box.
+  // One observation in, one finite lifecycle run, then exit.
+  try {
+    await startBody({ observation });
+    console.log("[host] demo complete — exiting cleanly");
+    rl.close();
+  } catch (err) {
+    console.error(err);
+    rl.close();
+    process.exit(1);
+  }
 });
 
 rl.once("close", () => {
